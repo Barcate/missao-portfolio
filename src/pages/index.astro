@@ -1,0 +1,9 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Experience from '../components/Experience';
+---
+
+<Layout>
+  <!-- WebGL só roda no navegador: client:only evita SSR -->
+  <Experience client:only="react" />
+</Layout>

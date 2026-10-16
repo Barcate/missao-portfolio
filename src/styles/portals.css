@@ -1,0 +1,156 @@
+/* ─── Convite do portal + botões ─────────────────────────── */
+.portal-card { --accent: #00aaff; }
+
+.portal-hint { margin-bottom: 20px; }
+
+.portal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: #fff;
+  border: 1px solid var(--accent);
+  padding: 12px 22px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.portal-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #000;
+  box-shadow: 0 0 26px var(--accent);
+}
+
+.portal-btn:disabled { cursor: default; }
+
+.portal-btn--ghost {
+  --accent: rgba(255, 255, 255, 0.35);
+  margin-top: 18px;
+  padding: 10px 16px;
+  font-size: 10px;
+  box-shadow: none;
+}
+
+.portal-key {
+  margin: 14px 0 0;
+  font-size: 11px !important;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ─── Flash de transição ─────────────────────────────────── */
+.warp {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--warp, #fff) 45%, #02020a 100%);
+  transition: opacity 0.55s ease;
+}
+
+.warp.is-on { opacity: 1; }
+
+/* ─── Sites dentro da cena (iframes projetados em perspectiva) ─── */
+.embed-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0; /* atrás do canvas: aparece pelo "buraco" desenhado no WebGL */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.embed-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  background: #02060c;
+  overflow: hidden;
+}
+
+.embed-frame::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border: 4px solid rgba(0, 229, 255, 0.25);
+  border-top-color: #00e5ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.embed-frame.is-loaded::before { display: none; }
+
+.portal-btn--sm { margin: 4px 0 12px; padding: 9px 14px; font-size: 10px; letter-spacing: 2px; }
+
+/* ─── Barra do modo "dentro do site" ─────────────────────── */
+.focus-bar {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  gap: 10px;
+  animation: embed-in 0.35s ease;
+}
+@keyframes embed-in { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } }
+
+.embed-modal__btn {
+  padding: 10px 14px;
+  background: rgba(2, 6, 12, 0.85);
+  color: #fff;
+  border: 1px solid #00e5ff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transition: background 0.2s, color 0.2s;
+}
+.embed-modal__btn:hover { background: #00e5ff; color: #000; }
+
+/* ─── Abas do menu (Sobre / Projetos / Contato) ──────────── */
+.nav-btn {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: #aaa;
+  font: inherit;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+.nav-btn:hover:not(:disabled) { color: #fff; }
+
+.nav-tabs {
+  position: fixed;
+  top: 22px;
+  right: 28px;
+  z-index: 40;
+  display: flex;
+  gap: 26px;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.nav-tabs.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+
+.nav-tabs .nav-btn { --accent: #00aaff; letter-spacing: 1px; border-bottom: 2px solid transparent; }
+.nav-tabs .nav-btn.is-active { color: #fff; border-bottom-color: var(--accent); }
+
+@media (max-width: 768px), (max-aspect-ratio: 9/10) {
+  .nav-tabs { top: 14px; right: 14px; gap: 16px; }
+  .nav-tabs .nav-btn { font-size: 0.72rem; padding: 10px 0; }
+}

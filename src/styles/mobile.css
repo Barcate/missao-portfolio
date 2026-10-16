@@ -1,0 +1,68 @@
+/* ─── Celular ─────────────────────────────────────────────────
+   Em tela vertical os painéis viram "folha" ancorada embaixo e a cena 3D sobe
+   (ver updateViewShift em PortfolioScene.ts) para as duas coisas não se cobrirem. */
+
+@media (pointer: coarse) {
+  .mouse { display: none; } /* ícone de mouse não faz sentido em toque */
+}
+
+@media (max-width: 768px), (max-aspect-ratio: 9/10) {
+  /* dvh = altura real visível (descontando a barra do navegador no celular) */
+  .screen,
+  #webgl,
+  .secao-ui { height: 100dvh; }
+
+  .start-screen { padding: 0 24px; }
+  .start-screen h1 { font-size: 1.3rem; letter-spacing: 3px; line-height: 1.4; }
+  .btn-enter { padding: 14px 32px; font-size: 0.9rem; }
+
+  /* HUD da dock */
+  .hud { padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .logo { font-size: 1.05rem; }
+  .hud nav ul { gap: 14px; }
+  .hud nav a,
+  .hud .nav-btn { font-size: 0.72rem; padding: 8px 0; }
+  .hero-text { top: 36%; width: 92%; }
+  .hero-text h3 { font-size: 0.8rem; letter-spacing: 3px; }
+  .hero-text h1 { font-size: clamp(1.6rem, 9.5vw, 2.6rem); letter-spacing: 1px; }
+  .hero-text p { font-size: 0.95rem; }
+
+  /* painéis = folha embaixo */
+  .secao-ui {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .secao-card {
+    max-width: none;
+    max-height: 46dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px 20px 16px;
+  }
+  .secao-tag { margin-bottom: 10px; letter-spacing: 2px; font-size: 9px; }
+  .secao-card h2 { font-size: 1.1rem; margin-bottom: 10px; }
+  .secao-card p { font-size: 13.5px; line-height: 1.6; margin-bottom: 10px; }
+  .portal-hint { margin-bottom: 14px; }
+  .portal-btn { width: 100%; justify-content: center; padding: 14px 18px; }
+  .portal-btn--ghost { width: auto; margin-top: 12px; padding: 12px 16px; }
+  .portal-key { margin-top: 12px; }
+  .story-body { min-height: 0; }
+  .contato-link { padding: 4px 0 12px; }
+  .projeto-item { padding: 14px; }
+
+  .sound-toggle { left: auto; right: 12px; bottom: auto; top: 62px; padding: 10px 12px; }
+}
+
+/* celular deitado: pouca altura → card compacto no lado direito */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud { padding: 14px 20px; }
+  .hero-text h1 { font-size: 2.2rem; }
+  .hero-text p { font-size: 0.9rem; }
+  .secao-ui { padding: 0 3vw; }
+  .secao-card { max-width: 340px; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; padding: 16px 18px; }
+  .secao-card h2 { font-size: 1rem; margin-bottom: 8px; }
+  .secao-card p { font-size: 12.5px; line-height: 1.5; margin-bottom: 8px; }
+  .portal-btn { padding: 10px 16px; }
+  .sound-toggle { left: 10px; bottom: 10px; }
+}

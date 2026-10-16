@@ -1,0 +1,97 @@
+/* ─── Overlay de texto dentro dos mundos ─────────────────── */
+.story-card { --accent: #00aaff; }
+.story-body { min-height: 150px; }
+
+/* texto "decodificando": o fantasma reserva o espaço, o vivo fica por cima */
+.sx { position: relative; display: inline-block; max-width: 100%; }
+.sx-ghost { visibility: hidden; }
+.sx-live { position: absolute; left: 0; top: 0; width: 100%; }
+
+.mode-terminal .sx { font-family: 'Courier New', monospace; }
+.mode-terminal .sx-live { color: #7dffd9; }
+.mode-terminal h2 .sx-live { color: #fff; text-shadow: 0 0 12px rgba(0, 229, 255, 0.55); }
+.mode-terminal .sx:not(.is-done) .sx-live::after { content: '▌'; animation: blink 0.8s steps(2) infinite; }
+
+.mode-radio .sx-live { text-shadow: 0 0 8px rgba(255, 140, 80, 0.55); }
+.mode-radio .sx:not(.is-done) .sx-live { animation: radio-flicker 0.25s steps(2) infinite; }
+
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes radio-flicker { 0% { opacity: 1; } 50% { opacity: 0.78; } }
+
+/* nebulosa: palavras saindo do desfoque */
+.bw {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(12px);
+  transform: translateY(8px);
+  animation: bw-in 0.9s ease forwards;
+}
+@keyframes bw-in { to { opacity: 1; filter: blur(0); transform: none; } }
+
+.meta-chip {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 4px 10px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+/* progresso e dica */
+.story-dots { display: flex; gap: 4px; margin-top: 16px; }
+
+.story-dot {
+  position: relative;
+  width: 28px;
+  height: 24px; /* área de toque; a barrinha visível é o ::before */
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: width 0.3s;
+}
+.story-dot::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.3s;
+}
+.story-dot:hover:not(:disabled)::before { background: rgba(255, 255, 255, 0.5); }
+.story-dot.is-on { width: 44px; }
+.story-dot.is-on::before { background: var(--accent); }
+
+.story-hint {
+  margin: 12px 0 0;
+  font-size: 11px !important;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* botão de som */
+.sound-toggle {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 40;
+  padding: 8px 14px;
+  background: rgba(2, 2, 10, 0.6);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: color 0.2s, border-color 0.2s;
+}
+.sound-toggle:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bw { animation-duration: 0.01s; animation-delay: 0s !important; }
+}
