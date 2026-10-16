@@ -39,7 +39,7 @@ export interface SceneCallbacks {
 type ActionName = keyof typeof CLIPS;
 type Actions = Record<ActionName, THREE.AnimationAction>;
 
-const ASSETS = `${import.meta.env.BASE_URL}assets`;
+const ASSETS = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/assets`;
 
 /** Osso raiz do astronauta: o clipe "jump" traz movimento embutido nele (desce ~5 e avança ~10). */
 const ROOT_BONE = 'root_01';
