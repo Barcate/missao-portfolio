@@ -4,7 +4,8 @@ export interface FrameOptions {
   /** largura do quadro em unidades de mundo */
   width: number;
   color: string;
-  url: string;
+  /** null = o site não pode ser embutido: o quadro mostra um aviso no lugar do iframe */
+  url: string | null;
   title: string;
 }
 
@@ -192,6 +193,7 @@ export class ProjectFrame {
     this.root.style.height = `${PX_H}px`;
     this.root.style.pointerEvents = 'none'; // pré-visualização: rolar/deslizar navega pelos passos
     this.root.style.visibility = 'hidden';
+    if (!o.url) this.buildBlocked();
     getEmbedLayer().appendChild(this.root);
 
     this.group.add(this.hole, this.bezel);
@@ -225,6 +227,11 @@ export class ProjectFrame {
   setInteractive(on: boolean): void {
     this.root.style.pointerEvents = on && this.mode === 'active' ? 'auto' : 'none';
     if (this.iframe) this.iframe.tabIndex = on ? 0 : -1;
+  }
+
+  /** O raio acerta a área do site? Só com o quadro aberto e um site de verdade (não o aviso de bloqueado). */
+  hit(ray: THREE.Raycaster): boolean {
+    return !!this.o.url && this.level > 0.5 && ray.intersectObject(this.hole, false).length > 0;
   }
 
   update(t: number, dt: number): void {
@@ -266,8 +273,27 @@ export class ProjectFrame {
     this.root.style.visibility = 'visible';
   }
 
+  /** Aviso fixo (sem iframe) para sites que proíbem ser embutidos; o link para abrir fica no painel de texto. */
+  private buildBlocked(): void {
+    const box = document.createElement('div');
+    box.className = 'embed-blocked';
+    box.style.setProperty('--accent', this.o.color);
+    const label = document.createElement('p');
+    label.className = 'embed-blocked__label';
+    label.textContent = 'Transmissão protegida';
+    const title = document.createElement('p');
+    title.className = 'embed-blocked__title';
+    title.textContent = this.o.title;
+    const text = document.createElement('p');
+    text.className = 'embed-blocked__text';
+    text.textContent = 'Este site não permite ser exibido dentro de outra página. Use o link no painel para visitá-lo.';
+    box.append(label, title, text);
+    this.root.appendChild(box);
+    this.root.classList.add('is-loaded');
+  }
+
   private ensureIframe(): void {
-    if (this.iframe) return;
+    if (this.iframe || !this.o.url) return;
     const f = document.createElement('iframe');
     f.src = this.o.url;
     f.title = this.o.title;

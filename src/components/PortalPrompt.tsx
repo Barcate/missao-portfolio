@@ -15,17 +15,22 @@ export default function PortalPrompt({ active, onEnter }: Props) {
   return (
     <>
       {portals.map((portal, i) => (
-        <div key={portal.name} className={`secao-ui${active === i ? ' is-visible' : ''}`}>
-          <div className="secao-card portal-card" style={{ '--accent': PORTALS[i].css } as CSSProperties}>
-            <span className="secao-tag">{portal.tag}</span>
-            <h2>
-              Portal
-              <br />
-              {portal.name}
-            </h2>
+        <div
+          key={portal.name}
+          className={`secao-ui${active === i ? ' is-visible' : ''}`}
+          style={{ '--accent': PORTALS[i].css } as CSSProperties}
+        >
+          <div className="secao-card portal-card">
+            <p className="hud-label">
+              <span className="hud-label__where">
+                Portal <b>{String(i + 1).padStart(2, '0')}</b>
+              </span>
+              {portal.tag}
+            </p>
+            <h2>{portal.name}</h2>
             <p className="portal-hint">{portal.hint}</p>
             <button type="button" className="portal-btn" onClick={onEnter} disabled={active !== i}>
-              ENTRAR NO PORTAL →
+              Entrar no portal
             </button>
             <p className="portal-key">
               {touch ? 'ou deslize para cima para continuar a viagem' : 'ou pressione Enter · role para continuar a viagem'}

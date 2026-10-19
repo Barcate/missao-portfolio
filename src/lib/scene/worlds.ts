@@ -5,6 +5,7 @@ import { ProjectFrame } from './ProjectFrame';
 import { LetterMonument } from './LetterMonument';
 import { ParticleText } from './ParticleText';
 import { dotTexture } from './textures';
+import { ShootingStars, SignalBeacon, atmosphere, duskSky, motes, nebulaSky } from './atmosphere';
 
 /** Enquadramento de um "passo" do texto: câmera, astronauta e para onde ele olha. */
 export interface BeatPose {
@@ -28,6 +29,8 @@ export interface World {
   framePose?(beat: number, aspect: number, fov: number): { cam: THREE.Vector3; target: THREE.Vector3 } | null;
   /** liga/desliga o clique dentro do iframe do passo atual */
   setInteractive?(on: boolean): void;
+  /** o raio (clique/hover na tela) acerta o site do passo atual? */
+  hitFrame?(ray: THREE.Raycaster): boolean;
   /** dispara os efeitos de texto do passo (partículas, letreiro, holograma, letras 3D) */
   show(beat: number): void;
   update(t: number, dt: number): void;
@@ -104,6 +107,20 @@ function createNebula(story: Beat[], lite: boolean): World {
   rim.position.set(30, 16, 40);
   scene.add(key, rim, starfield(1500, 500));
 
+  // céu de gás em volta de tudo + brilhos flutuando perto da câmera + estrelas cadentes
+  const sky = nebulaSky(lite);
+  const glimmer = motes({
+    count: lite ? 160 : 320,
+    center: [5, 20, 20],
+    box: [110, 60, 110],
+    wind: [0.6, 0.4, -1.2],
+    color: 0xd9b8ff,
+    size: 0.9,
+    opacity: 0.8,
+  });
+  const meteors = new ShootingStars(3, 0xffc8f0);
+  scene.add(sky.mesh, glimmer.points, meteors.group);
+
   // nuvens de gás coloridas, achatadas como um disco galáctico
   const N = lite ? 1800 : 3200;
   const pos = new Float32Array(N * 3);
@@ -136,7 +153,9 @@ function createNebula(story: Beat[], lite: boolean): World {
   ring.position.copy(planet.position);
   ring.rotation.x = Math.PI / 2.3;
   ring.rotation.y = 0.3;
-  scene.add(planet, ring);
+  const planetGlow = atmosphere(46, 0xb06bff);
+  planetGlow.position.copy(planet.position);
+  scene.add(planet, ring, planetGlow);
 
   // cristais flutuando em volta
   const crystals: { mesh: THREE.Mesh; base: number; speed: number }[] = [];
@@ -180,6 +199,9 @@ function createNebula(story: Beat[], lite: boolean): World {
     },
     show: (b) => word.setWord(story[b].keyword),
     update(t, dt) {
+      sky.uniforms.uTime.value = t;
+      glimmer.update(t);
+      meteors.update(dt);
       cloud.rotation.y = t * 0.02;
       planet.rotation.y = t * 0.05;
       crystals.forEach((c, i) => {
@@ -239,7 +261,7 @@ function createNeon(story: Beat[], lite: boolean): World {
   // quadros com o SITE REAL de cada projeto dentro (iframe): passo 1..N = projeto 1..N
   const frames = story.slice(1).map((b, i) => {
     const [mx, , mz] = pick(spots, i);
-    const frame = new ProjectFrame({ width: 26, color: '#00e5ff', url: b.embed ?? 'about:blank', title: b.title });
+    const frame = new ProjectFrame({ width: 26, color: '#00e5ff', url: b.embed ?? null, title: b.title });
     frame.group.position.set(mx, 24, mz - 13);
     scene.add(frame.group);
     return frame;
@@ -250,13 +272,15 @@ function createNeon(story: Beat[], lite: boolean): World {
   sign.mesh.position.set(30, 38, 72);
   scene.add(sign.mesh);
 
-  // anéis de dados
-  const rings = [26, 38].map((r, i) => {
+  // anéis de dados: no FIM da avenida (atrás do último quadro), como cenário de fundo —
+  // no meio dela eles cruzavam os quadros e ficavam por cima dos sites
+  const ringZ = 95 + count * 36 + 90;
+  const rings = [50, 72].map((r, i) => {
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(r, 0.35, 16, 120),
+      new THREE.TorusGeometry(r, 0.6, 16, 160),
       new THREE.MeshBasicMaterial({ color: i ? 0x00ffaa : 0x00e5ff, fog: false }),
     );
-    ring.position.set(0, 26, 150);
+    ring.position.set(0, 40, ringZ);
     scene.add(ring);
     return ring;
   });
@@ -296,7 +320,7 @@ function createNeon(story: Beat[], lite: boolean): World {
       frames.forEach((f) => f.layout(camera, w, h));
     },
     framePose(b, aspect, fov) {
-      if (b < 1) return null;
+      if (b < 1 || !story[b]?.embed) return null;
       const [mx, , mz] = pick(spots, b - 1);
       const t = Math.tan((fov * Math.PI) / 360);
       const fh = (16.25 + 3.6) / 2; // meia altura/largura do quadro inteiro (com moldura)
@@ -308,6 +332,7 @@ function createNeon(story: Beat[], lite: boolean): World {
     setInteractive(on) {
       frames[active]?.setInteractive(on);
     },
+    hitFrame: (ray) => !!frames[active]?.hit(ray),
     show(b) {
       active = b - 1;
       if (b === 0) sign.setText(story[0].keyword);
@@ -360,15 +385,30 @@ function createRedPlanet(story: Beat[], lite: boolean): World {
   key.position.set(20, 40, -40);
   const back = new THREE.DirectionalLight(0xff7a3d, 2);
   back.position.set(-60, 30, 200);
-  scene.add(key, back, starfield(600, 600));
+  scene.add(key, back);
+
+  // céu de entardecer (as estrelas dele somem perto do horizonte) com cordilheiras ao longe
+  const sky = duskSky(0x4a1a0e, lite);
+  scene.add(sky.mesh);
 
   const seg = lite ? 90 : 140;
   const geo = new THREE.PlaneGeometry(900, 900, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
-  for (let i = 0; i < p.count; i++) p.setY(i, terrainHeight(p.getX(i), p.getZ(i)));
+  // cor por altura: vales escuros e avermelhados, cristas claras e alaranjadas, com manchas
+  const low = new THREE.Color(0x5e2112);
+  const high = new THREE.Color(0xc4582c);
+  const tint = new THREE.Color();
+  const colors = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) {
+    const h = terrainHeight(p.getX(i), p.getZ(i));
+    p.setY(i, h);
+    tint.copy(low).lerp(high, THREE.MathUtils.smoothstep(h, -8, 12)).multiplyScalar(rand(0.82, 1.1));
+    colors.set([tint.r, tint.g, tint.b], i * 3);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x9a3b1f, flatShading: true, roughness: 1 })));
+  scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 })));
 
   // sol baixo + halo (sobe a cada passo) e duas luas
   const sun = new THREE.Mesh(new THREE.SphereGeometry(26, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffc27a, fog: false }));
@@ -399,16 +439,24 @@ function createRedPlanet(story: Beat[], lite: boolean): World {
     scene.add(rock);
   }
 
-  // poeira à deriva
-  const N = lite ? 400 : 700;
-  const dust = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    dust[i * 3] = rand(-120, 140);
-    dust[i * 3 + 1] = rand(0, 60);
-    dust[i * 3 + 2] = rand(-40, 200);
-  }
-  const dustPts = softPoints(dust, 3.5, { color: 0xffb27a, opacity: 0.55 });
-  scene.add(dustPts);
+  // areia soprando com o vento (GPU) + estrelas cadentes no alto
+  const dust = motes({
+    count: lite ? 400 : 800,
+    center: [5, 16, 40],
+    box: [160, 40, 140],
+    wind: [9, 0.8, 1.5],
+    color: 0xffb27a,
+    size: 0.8,
+    opacity: 0.7,
+  });
+  const meteors = new ShootingStars(2, 0xffe2c8);
+  scene.add(dust.points, meteors.group);
+
+  // antena de sinal à esquerda da tela (x+), atrás do astronauta: "do outro lado do sinal"
+  const beacon = new SignalBeacon(0xffa25a);
+  beacon.group.position.set(58, terrainHeight(58, 62) - 0.5, 62);
+  beacon.group.rotation.y = -0.5;
+  scene.add(beacon.group);
 
   // monumento de letras 3D
   const MX = 4;
@@ -452,15 +500,11 @@ function createRedPlanet(story: Beat[], lite: boolean): World {
       halo.scale.setScalar(1 + Math.sin(t * 0.8) * 0.03);
       monument.update(dt);
 
-      const a = dustPts.geometry.attributes.position as THREE.BufferAttribute;
-      for (let i = 0; i < N; i++) {
-        let x = a.getX(i) + dt * 7;
-        let y = a.getY(i) + dt * 1.5;
-        if (x > 140) x = -120;
-        if (y > 60) y = 0;
-        a.setXYZ(i, x, y, a.getZ(i));
-      }
-      a.needsUpdate = true;
+      sky.uniforms.uTime.value = t;
+      (sky.uniforms.uSunDir.value as THREE.Vector3).copy(sun.position).normalize(); // o brilho do céu segue o sol
+      dust.update(t);
+      meteors.update(dt);
+      beacon.update(t);
     },
     dispose() {
       monument.dispose();

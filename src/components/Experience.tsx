@@ -18,6 +18,7 @@ export default function Experience() {
   const audioRef = useRef<AudioEngine | null>(null);
 
   const [state, setState] = useState<SceneState>('loading');
+  const [progress, setProgress] = useState(0); // carregamento inicial (0..1)
   const [hudVisible, setHudVisible] = useState(false);
   const [prompt, setPrompt] = useState(-1); // portal ao lado do astronauta
   const [world, setWorld] = useState(-1); // mundo em que ele está
@@ -39,6 +40,7 @@ export default function Experience() {
       onBeatChange: setBeat,
       onFocusChange: setFocus,
       onTransition: (on, color) => setWarp({ on, color }),
+      onProgress: setProgress,
     });
     sceneRef.current = scene;
 
@@ -88,7 +90,7 @@ export default function Experience() {
     <>
       <canvas ref={canvasRef} id="webgl" />
 
-      <Loader visible={state === 'loading'} />
+      <Loader visible={state === 'loading'} progress={progress} />
       <StartScreen visible={state === 'start'} onStart={handleStart} />
       <Hud visible={hudVisible} onNavigate={handleNavigate} />
       <NavTabs
@@ -100,8 +102,6 @@ export default function Experience() {
       <StoryOverlay
         world={focus ? -1 : world} /* em foco o card some e o site ocupa a tela */
         beat={beat}
-        interactive={focus}
-        onInteract={handleFocus}
         onExit={handleExit}
         onGo={handleGo}
         onTick={handleTick}

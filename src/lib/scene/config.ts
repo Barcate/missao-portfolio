@@ -37,9 +37,10 @@ export const CLIPS = {
  * Portais (um por seção). `offset` = posição relativa ao ponto onde o astronauta para
  * (x, y acima da altura de cruzeiro, z à frente da seção). x positivo = lado esquerdo da tela.
  * `offsetTall` = mesma coisa para tela vertical (celular em pé): o portal fica ACIMA do astronauta.
+ * `inner` = cor do mundo de destino, vista lá no fundo do túnel.
  */
 export const PORTALS = [
-  { color: 0xc04dff, css: '#c04dff', offset: [30, 3, 16], offsetTall: [4, 14, 40] },
-  { color: 0x00e5ff, css: '#00e5ff', offset: [30, 3, 16], offsetTall: [4, 14, 40] },
-  { color: 0xff7a3d, css: '#ff7a3d', offset: [30, 3, 16], offsetTall: [4, 14, 40] },
+  { color: 0xc04dff, inner: 0xff4da6, css: '#c04dff', offset: [30, 3, 16], offsetTall: [4, 14, 40] },
+  { color: 0x00e5ff, inner: 0x00ffaa, css: '#00e5ff', offset: [30, 3, 16], offsetTall: [4, 14, 40] },
+  { color: 0xff7a3d, inner: 0xffc27a, css: '#ff7a3d', offset: [30, 3, 16], offsetTall: [4, 14, 40] },
 ] as const;

@@ -14,7 +14,7 @@ export const navLinks = [
 ];
 
 export const about = {
-  tag: '// 01 — Sobre Mim',
+  tag: 'Sobre mim',
   title: ['Olá, eu sou', 'Matheus Barbosa'],
   paragraphs: [
     'Desenvolvedor full-stack apaixonado por criar experiências digitais que mesclam design e tecnologia.',
@@ -22,10 +22,21 @@ export const about = {
   ],
 };
 
-export const projects = {
-  tag: '// 02 — Projetos',
+export interface Project {
+  name: string;
+  stack: string;
+  url: string;
+  host: string;
+  desc: string;
+  /** false = o site proíbe iframe */
+  embed?: false;
+}
+
+export const projects: { tag: string; title: string[]; items: Project[] } = {
+  tag: 'Projetos',
   title: ['Missões', 'Concluídas'],
   // stack = chip de destaque (tipo/tecnologia) · host = texto do link · desc = frase do passo
+  // embed: false = o site proíbe iframe (X-Frame-Options / frame-ancestors): o quadro mostra só o aviso + link
   items: [
     {
       name: 'AMBATECH',
@@ -33,13 +44,6 @@ export const projects = {
       url: 'https://ambatech.vercel.app',
       host: 'ambatech.vercel.app',
       desc: 'Site da AmbaTech: landing pages de alta conversão, portfólios e UI/UX design.',
-    },
-    {
-      name: 'LEO CARDAN',
-      stack: 'Landing page de mentoria',
-      url: 'https://mentoria-leocardan.vercel.app',
-      host: 'mentoria-leocardan.vercel.app',
-      desc: 'Página da mentoria individual Status & Percepção: autoridade percebida e presença que abre portas.',
     },
     {
       name: 'RAI KOCHŌ',
@@ -69,16 +73,25 @@ export const projects = {
       host: 'ifsc.usp.br/~prata',
       desc: 'Site do laboratório de biofotônica do IFSC-USP: pesquisa, publicações, equipe e contato do Prof. Sebastião Pratavieira.',
     },
+    // por último: é o único sem site ao vivo no quadro, assim não interrompe a sequência
+    {
+      name: 'LEO CARDAN',
+      stack: 'Landing page de mentoria',
+      url: 'https://mentoria-leocardan.vercel.app',
+      host: 'mentoria-leocardan.vercel.app',
+      embed: false, // o site responde X-Frame-Options: DENY
+      desc: 'Página da mentoria individual Status & Percepção: autoridade percebida e presença que abre portas.',
+    },
   ],
 };
 
 export const contact = {
-  tag: '// 03 — Contato',
+  tag: 'Contato',
   title: ['Vamos', 'Colaborar?'],
   text: 'Sempre aberto a novos projetos e parcerias.',
   links: [
-    { label: '✉ seu@email.com', href: 'mailto:seu@email.com', external: false },
-    { label: '⌥ github.com/seunome', href: 'https://github.com/seunome', external: true },
+    { label: 'mateusbosa21@gmail.com', href: 'mailto:mateusbosa21@gmail.com', external: false },
+    { label: 'github.com/barcate', href: 'https://github.com/barcate', external: true },
   ],
 };
 
@@ -97,7 +110,7 @@ export const portals = [
   {
     tag: contact.tag,
     name: 'Planeta Vermelho',
-    hint: 'Um portal laranja abre para um planeta tranquilo — o lugar certo para conversar.',
+    hint: 'Um portal laranja abre para um planeta tranquilo, o lugar certo para conversar.',
   },
 ];
 
@@ -135,13 +148,13 @@ export const stories: Beat[][] = [
       keyword: 'SOBRE',
     },
     {
-      kicker: '// 01.1 — O que eu faço',
+      kicker: 'O que eu faço',
       title: 'Interfaces que vão além da tela',
       lines: [about.paragraphs[1]],
       keyword: 'CRIAR',
     },
     {
-      kicker: '// 01.2 — Como eu trabalho',
+      kicker: 'Como eu trabalho',
       title: 'Design e código na mesma conversa',
       lines: ['Gosto de acompanhar uma ideia do primeiro rascunho até o produto no ar.'],
       keyword: 'CÓDIGO',
@@ -156,13 +169,13 @@ export const stories: Beat[][] = [
       keyword: 'PROJETOS',
     },
     ...projects.items.map((item, i) => ({
-      kicker: `// 02.${i + 1} — ${item.name}`,
+      kicker: `Projeto ${i + 1}`,
       title: item.name,
       lines: [item.desc],
       keyword: item.name,
       meta: item.stack,
-      links: [{ label: `↗ ${item.host}`, href: item.url, external: true }],
-      embed: item.url,
+      links: [{ label: item.host, href: item.url, external: true }],
+      embed: item.embed === false ? undefined : item.url,
     })),
   ],
   // 2 · Planeta Vermelho — Contato
@@ -174,13 +187,13 @@ export const stories: Beat[][] = [
       keyword: 'VAMOS',
     },
     {
-      kicker: '// 03.1 — Do outro lado do sinal',
+      kicker: 'Do outro lado do sinal',
       title: 'Me conte a sua ideia',
       lines: ['Vamos transformar o que você imagina em algo que funciona.'],
       keyword: 'FALE',
     },
     {
-      kicker: '// 03.2 — Escolha seu canal',
+      kicker: 'Escolha seu canal',
       title: 'Estou por aqui',
       lines: [],
       keyword: 'CONTATO',

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import gsap from 'gsap';
 import {
@@ -34,7 +35,14 @@ export interface SceneCallbacks {
   onFocusChange: (on: boolean) => void;
   /** flash de transição ao atravessar o portal (cor css do portal) */
   onTransition: (active: boolean, color: string) => void;
+  /** progresso do carregamento inicial (0..1) */
+  onProgress: (progress: number) => void;
 }
+
+/** Tamanho aproximado de cada modelo (bytes): usado quando o servidor não informa o total (ex.: gzip). */
+const ASSET_BYTES = { 'spacedock.glb': 5_400_000, 'astronauta.glb': 1_200_000 } as const;
+/** fração da barra reservada para compilar os shaders depois do download */
+const COMPILE_SHARE = 0.08;
 
 type ActionName = keyof typeof CLIPS;
 type Actions = Record<ActionName, THREE.AnimationAction>;
@@ -69,6 +77,8 @@ export class PortfolioScene {
   private activeScene: THREE.Scene = this.scene;
   private elapsed = 0;
   private readonly pointer = new THREE.Vector2();
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly ndc = new THREE.Vector2();
 
   // "entrar no site": câmera de frente para o quadro e iframe clicável
   private focusOn = false;
@@ -106,6 +116,8 @@ export class PortfolioScene {
   private camOffsetZ = CAM_OFFSET_Z;
 
   private rafId = 0;
+  /** medição de desempenho para a resolução adaptativa */
+  private readonly perf = { time: 0, frames: 0, slow: 0 };
   private timeline: gsap.core.Timeline | null = null;
   private hoverTl: gsap.core.Timeline | null = null;
 
@@ -146,6 +158,8 @@ export class PortfolioScene {
     window.addEventListener('touchend', this.onTouchEnd, { passive: true });
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('pointermove', this.onPointerMove);
+    this.canvas.addEventListener('click', this.onCanvasClick);
+    window.addEventListener('click', this.onWindowClick);
     window.addEventListener('resize', this.onResize);
     this.animate();
   }
@@ -185,6 +199,8 @@ export class PortfolioScene {
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('pointermove', this.onPointerMove);
+    this.canvas.removeEventListener('click', this.onCanvasClick);
+    window.removeEventListener('click', this.onWindowClick);
     this.beatTl?.kill();
     this.world?.dispose();
     this.unlockPageScroll();
@@ -233,10 +249,21 @@ export class PortfolioScene {
 
   private loadModels(): void {
     const manager = new THREE.LoadingManager();
-    manager.onLoad = () => {
-      if (this.state === 'loading') this.setState('start');
-    };
+    manager.onLoad = () => void this.finishLoading();
     const loader = new GLTFLoader(manager);
+    loader.setMeshoptDecoder(MeshoptDecoder); // modelos comprimidos com meshopt (gltf-transform)
+
+    // progresso por bytes de cada arquivo (o LoadingManager só conta arquivos inteiros)
+    const loaded: Record<string, number> = {};
+    const total: Record<string, number> = { ...ASSET_BYTES };
+    const expected = Object.values(ASSET_BYTES).reduce((a, b) => a + b, 0);
+    const track = (file: keyof typeof ASSET_BYTES) => (e: ProgressEvent) => {
+      loaded[file] = e.loaded;
+      if (e.lengthComputable && e.total > 0) total[file] = e.total;
+      const sumTotal = Object.values(total).reduce((a, b) => a + b, 0) || expected;
+      const sumLoaded = Object.values(loaded).reduce((a, b) => a + b, 0);
+      this.cb.onProgress(Math.min(1, sumLoaded / sumTotal) * (1 - COMPILE_SHARE));
+    };
 
     loader.load(`${ASSETS}/spacedock.glb`, (gltf) => {
       const dock = gltf.scene;
@@ -246,7 +273,7 @@ export class PortfolioScene {
       dock.rotation.y = Math.PI;
       this.spaceDock = dock;
       this.scene.add(dock);
-    });
+    }, track('spacedock.glb'));
 
     loader.load(`${ASSETS}/astronauta.glb`, (gltf) => {
       const astronaut = gltf.scene;
@@ -275,7 +302,22 @@ export class PortfolioScene {
       // O FireSystem se prende ao astronauta sozinho — NÃO adicionar fire.object à cena,
       // senão ele é "roubado" do astronauta e fica parado na origem.
       this.fire = new FireSystem(astronaut);
-    });
+    }, track('astronauta.glb'));
+  }
+
+  /**
+   * Download terminado: compila todos os shaders da cena (portais, buraco negro, modelos) ANTES da tela
+   * de início — senão a GPU compila na primeira vez que cada coisa aparece e a animação engasga.
+   */
+  private async finishLoading(): Promise<void> {
+    this.cb.onProgress(1 - COMPILE_SHARE);
+    try {
+      await this.renderer.compileAsync(this.scene, this.camera);
+    } catch {
+      // sem KHR_parallel_shader_compile o three compila na hora do primeiro render; tudo bem
+    }
+    this.cb.onProgress(1);
+    if (this.state === 'loading') this.setState('start');
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -287,10 +329,11 @@ export class PortfolioScene {
     const dt = this.clock.getDelta();
 
     this.elapsed += dt;
+    if (this.state !== 'loading') this.adaptResolution(dt);
 
     this.mixer?.update(dt);
     this.fire?.update(dt);
-    this.portals.forEach((p) => p.update(this.elapsed));
+    this.portals.forEach((p, i) => p.update(this.elapsed, dt, i === this.currentSection && this.state === 'floating'));
     this.world?.update(this.elapsed, dt);
 
     if (this.camMode === 'orbit') this.controls.update();
@@ -324,6 +367,27 @@ export class PortfolioScene {
     this.world?.layoutEmbeds?.(this.camera, innerWidth, innerHeight);
     this.renderer.render(this.activeScene, this.camera);
   };
+
+  /**
+   * GPU fraca: se a média passar de ~22 ms por quadro (abaixo de 45 fps) por 2 s seguidos, baixa a
+   * resolução um degrau (até 1×). Só desce — subir de volta faria a qualidade ficar oscilando.
+   */
+  private adaptResolution(dt: number): void {
+    const p = this.perf;
+    p.time += dt;
+    p.frames++;
+    if (p.time < 1) return;
+    const avg = p.time / p.frames;
+    p.time = 0;
+    p.frames = 0;
+    if (document.hidden || avg > 0.25) return; // aba voltando do segundo plano: medição inválida
+    p.slow = avg > 1 / 45 ? p.slow + 1 : 0;
+    if (p.slow < 2) return;
+    p.slow = 0;
+    const current = this.renderer.getPixelRatio();
+    const next = Math.max(1, current - 0.25);
+    if (next < current) this.renderer.setPixelRatio(next);
+  }
 
   private onResize = (): void => this.applyLayout();
 
@@ -537,7 +601,30 @@ export class PortfolioScene {
       return;
     }
     this.pointer.set((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1));
+    this.canvas.style.cursor = this.frameUnder(e) ? 'pointer' : '';
   };
+
+  /** Clicar/tocar direto no site do quadro = entrar nele para navegar (sem precisar do botão). */
+  private onCanvasClick = (e: MouseEvent): void => {
+    if (!this.frameUnder(e)) return;
+    e.stopPropagation(); // senão este mesmo clique chega em onWindowClick e já sai do site
+    this.canvas.style.cursor = '';
+    this.setFocus(true);
+  };
+
+  /** Em foco, clicar fora do site (no espaço em volta) sai dele. Cliques dentro do iframe nem chegam aqui. */
+  private onWindowClick = (e: MouseEvent): void => {
+    if (!this.focusOn) return;
+    if ((e.target as Element | null)?.closest?.('button, a, .embed-frame')) return; // barra de cima / links
+    this.setFocus(false);
+  };
+
+  private frameUnder(e: MouseEvent): boolean {
+    if (this.state !== 'world' || this.focusOn || this.busy || !this.world?.hitFrame) return false;
+    this.ndc.set((e.clientX / innerWidth) * 2 - 1, -((e.clientY / innerHeight) * 2 - 1));
+    this.raycaster.setFromCamera(this.ndc, this.camera);
+    return this.world.hitFrame(this.raycaster);
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // Sequências de animação
@@ -792,8 +879,8 @@ export class PortfolioScene {
   }
 
   private setupPortals(): void {
-    PORTALS.forEach((cfg, i) => {
-      const portal = new Portal(cfg.color);
+    PORTALS.forEach((cfg) => {
+      const portal = new Portal(cfg.color, cfg.inner, 13, this.lite);
       this.scene.add(portal.group);
       this.portals.push(portal);
     });
@@ -833,6 +920,7 @@ export class PortfolioScene {
       }, 0.5)
       .to(astronaut.position, { x: target.x, y: target.y, z: target.z, duration: 1.7, ease: 'power2.in' }, 0.5)
       .to(astronaut.scale, { x: 1.5, y: 1.5, z: 1.5, duration: 1.7, ease: 'power2.in' }, 0.5)
+      .to(this.portals[index], { charge: 1, duration: 1.8, ease: 'power2.in' }, 0.2) // o portal "liga" enquanto ele se aproxima
       .add(() => this.cb.onTransition(true, color), 1.5)
       .add(() => this.swapToWorld(index), 2.2);
   }
@@ -925,6 +1013,10 @@ export class PortfolioScene {
     this.camOffsetZ = CAM_OFFSET_Z;
     this.camera.position.set(portalPos.x, portalPos.y + CAM_HEIGHT, portalPos.z + CAM_OFFSET_Z);
     this.cb.onTransition(false, PORTALS[index].css);
+    const portal = this.portals[index];
+    gsap.killTweensOf(portal);
+    portal.charge = 1; // saiu carregado: o portal "expira" e volta ao repouso
+    gsap.to(portal, { charge: 0, duration: 1.6, ease: 'power2.out' });
 
     this.timeline = gsap
       .timeline({

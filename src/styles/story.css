@@ -1,76 +1,106 @@
 /* ─── Overlay de texto dentro dos mundos ─────────────────── */
-.story-card { --accent: #00aaff; }
 .story-body { min-height: 150px; }
 
-/* texto "decodificando": o fantasma reserva o espaço, o vivo fica por cima */
+/* rótulo "decodificando": o fantasma reserva o espaço, o vivo fica por cima */
 .sx { position: relative; display: inline-block; max-width: 100%; }
 .sx-ghost { visibility: hidden; }
-.sx-live { position: absolute; left: 0; top: 0; width: 100%; }
+.sx-live { position: absolute; left: 0; top: 0; width: 100%; white-space: nowrap; }
 
-.mode-terminal .sx { font-family: 'Courier New', monospace; }
-.mode-terminal .sx-live { color: #7dffd9; }
-.mode-terminal h2 .sx-live { color: #fff; text-shadow: 0 0 12px rgba(0, 229, 255, 0.55); }
-.mode-terminal .sx:not(.is-done) .sx-live::after { content: '▌'; animation: blink 0.8s steps(2) infinite; }
-
-.mode-radio .sx-live { text-shadow: 0 0 8px rgba(255, 140, 80, 0.55); }
-.mode-radio .sx:not(.is-done) .sx-live { animation: radio-flicker 0.25s steps(2) infinite; }
-
-@keyframes blink { 50% { opacity: 0; } }
-@keyframes radio-flicker { 0% { opacity: 1; } 50% { opacity: 0.78; } }
-
-/* nebulosa: palavras saindo do desfoque */
-.bw {
+/* palavras sobem de trás de uma máscara (como legenda de abertura de filme) */
+.w {
   display: inline-block;
-  opacity: 0;
-  filter: blur(12px);
-  transform: translateY(8px);
-  animation: bw-in 0.9s ease forwards;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.08em; /* não corta descendentes (g, p, j) */
+  margin-bottom: -0.08em;
 }
-@keyframes bw-in { to { opacity: 1; filter: blur(0); transform: none; } }
+.w > span {
+  display: inline-block;
+  transform: translateY(105%);
+  opacity: 0;
+  animation: w-in 0.75s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+@keyframes w-in { to { transform: none; opacity: 1; } }
 
 .meta-chip {
   display: inline-block;
-  margin-bottom: 14px;
-  padding: 4px 10px;
-  border: 1px solid var(--accent);
+  margin: -4px 0 14px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
   color: var(--accent);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 10px;
-  letter-spacing: 2px;
 }
 
-/* progresso e dica */
-.story-dots { display: flex; gap: 4px; margin-top: 16px; }
+.story-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-top: 18px;
+  animation: fade-in 0.6s ease 0.8s both;
+}
+@keyframes fade-in { from { opacity: 0; } }
+
+/* dica no lugar do antigo botão "Entrar no site": o próprio quadro é clicável */
+.story-cta {
+  margin: 0 !important;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px !important;
+  color: var(--accent) !important;
+}
+.story-cta::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 10px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: cta-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cta-pulse { 50% { opacity: 0.3; } }
+
+/* progresso: traços finos, os já vistos ficam meio acesos */
+.story-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 26px;
+}
+.story-dots { display: flex; gap: 3px; }
 
 .story-dot {
   position: relative;
-  width: 28px;
-  height: 24px; /* área de toque; a barrinha visível é o ::before */
+  width: 18px;
+  height: 24px; /* área de toque; o traço visível é o ::before */
   padding: 0;
   border: 0;
   background: transparent;
   cursor: pointer;
-  transition: width 0.3s;
+  transition: width 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .story-dot::before {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  top: 10px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  top: 11px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.18);
   transition: background 0.3s;
 }
-.story-dot:hover:not(:disabled)::before { background: rgba(255, 255, 255, 0.5); }
-.story-dot.is-on { width: 44px; }
-.story-dot.is-on::before { background: var(--accent); }
+.story-dot.is-past::before { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.story-dot:hover:not(:disabled)::before { background: rgba(255, 255, 255, 0.55); }
+.story-dot.is-on { width: 40px; }
+.story-dot.is-on::before { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 
 .story-hint {
-  margin: 12px 0 0;
+  margin: 0 !important;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 11px !important;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.35) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  text-shadow: none !important;
 }
 
 /* botão de som */
@@ -93,5 +123,6 @@
 .sound-toggle:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
 
 @media (prefers-reduced-motion: reduce) {
-  .bw { animation-duration: 0.01s; animation-delay: 0s !important; }
+  .w > span,
+  .story-actions { animation-duration: 0.01s; animation-delay: 0s !important; }
 }

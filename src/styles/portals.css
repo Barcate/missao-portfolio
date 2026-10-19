@@ -1,59 +1,118 @@
 /* ─── Convite do portal + botões ─────────────────────────── */
-.portal-card { --accent: #00aaff; }
-
-.portal-hint { margin-bottom: 20px; }
+.portal-hint { margin-bottom: 22px; }
 
 .portal-btn {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: transparent;
+  gap: 12px;
+  background: color-mix(in srgb, var(--accent) 12%, rgba(2, 2, 8, 0.4));
   color: #fff;
-  border: 1px solid var(--accent);
-  padding: 12px 22px;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px;
-  letter-spacing: 3px;
+  border: 0;
+  border-left: 2px solid var(--accent);
+  padding: 12px 18px 12px 16px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.25s, padding 0.25s;
+}
+.portal-btn::after {
+  content: '→';
+  color: var(--accent);
+  transition: transform 0.25s;
 }
 
 .portal-btn:hover:not(:disabled) {
-  background: var(--accent);
-  color: #000;
-  box-shadow: 0 0 26px var(--accent);
+  background: color-mix(in srgb, var(--accent) 26%, rgba(2, 2, 8, 0.4));
+  padding-right: 22px;
 }
+.portal-btn:hover:not(:disabled)::after { transform: translateX(4px); }
+.portal-btn:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
 
 .portal-btn:disabled { cursor: default; }
 
+/* voltar: só texto, sem peso */
 .portal-btn--ghost {
-  --accent: rgba(255, 255, 255, 0.35);
-  margin-top: 18px;
-  padding: 10px 16px;
-  font-size: 10px;
-  box-shadow: none;
+  margin-top: 22px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
 }
+.portal-btn--ghost::after { content: none; }
+.portal-btn--ghost:hover:not(:disabled) { background: none; padding-right: 0; color: #fff; }
 
 .portal-key {
   margin: 14px 0 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 11px !important;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.3) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
 }
 
-/* ─── Flash de transição ─────────────────────────────────── */
+/* ─── Transição: salto pelo túnel (núcleo de luz + riscos de hiperespaço) ─── */
 .warp {
   position: fixed;
   inset: 0;
   z-index: 30;
   pointer-events: none;
+  overflow: hidden;
   opacity: 0;
-  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--warp, #fff) 45%, #02020a 100%);
-  transition: opacity 0.55s ease;
+  transform: scale(1.25);
+  background: radial-gradient(
+    circle at 50% 50%,
+    #fff 0%,
+    var(--warp, #fff) 22%,
+    color-mix(in srgb, var(--warp, #fff) 40%, #02020a) 55%,
+    #02020a 100%
+  );
+  transition: opacity 0.55s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.warp.is-on { opacity: 1; }
+.warp::before,
+.warp::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(circle, transparent 6%, #000 30%, #000 55%, transparent 72%);
+  mask-image: radial-gradient(circle, transparent 6%, #000 30%, #000 55%, transparent 72%);
+}
+
+/* riscos de luz irradiando do centro, girando em sentidos opostos */
+.warp::before {
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 3.4deg,
+    rgba(255, 255, 255, 0.55) 3.7deg,
+    transparent 4deg 7deg
+  );
+  animation: warp-spin 2.4s linear infinite;
+}
+
+.warp::after {
+  background: repeating-conic-gradient(
+    from 2deg,
+    transparent 0deg 5.5deg,
+    color-mix(in srgb, var(--warp, #fff) 80%, transparent) 6deg,
+    transparent 6.6deg 11deg
+  );
+  animation: warp-spin 3.6s linear infinite reverse;
+}
+
+.warp.is-on { opacity: 1; transform: scale(1); }
+.warp:not(.is-on)::before,
+.warp:not(.is-on)::after { animation-play-state: paused; }
+
+@keyframes warp-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .warp { transform: none; transition: opacity 0.55s ease; }
+  .warp::before,
+  .warp::after { animation: none; }
+}
 
 /* ─── Sites dentro da cena (iframes projetados em perspectiva) ─── */
 .embed-layer {
@@ -88,7 +147,57 @@
 }
 .embed-frame.is-loaded::before { display: none; }
 
-.portal-btn--sm { margin: 4px 0 12px; padding: 9px 14px; font-size: 10px; letter-spacing: 2px; }
+/* quadro de site que proíbe iframe: "sinal protegido" no lugar da página */
+.embed-frame { container-type: size; }
+.embed-blocked {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 9cqw;
+  background:
+    radial-gradient(ellipse at 30% 40%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 6px),
+    #02060c;
+  color: #fff;
+}
+.embed-blocked p { margin: 0; }
+.embed-blocked__label {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 1.9cqw;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.embed-blocked__label::before {
+  content: '';
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.8em;
+  vertical-align: -0.1em;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 1.2em var(--accent);
+  animation: blocked-pulse 1.6s ease-in-out infinite;
+}
+@keyframes blocked-pulse { 50% { opacity: 0.25; } }
+.embed-blocked__title {
+  margin-top: 2cqw !important;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 8cqw;
+  line-height: 1;
+}
+.embed-blocked__text {
+  margin-top: 2.4cqw !important;
+  max-width: 60ch;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 1.8cqw;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 
 /* ─── Barra do modo "dentro do site" ─────────────────────── */
 .focus-bar {

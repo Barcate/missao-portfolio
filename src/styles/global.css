@@ -69,20 +69,116 @@ body {
   gap: 12px;
 }
 
-.loader-content { text-align: center; }
-.loader-content p { margin-top: 12px; }
+/* estrelas passando devagar (só CSS: dois padrões de pontos em velocidades diferentes) */
+.loader-stars,
+.loader-stars::after {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 200px 160px, #fff, transparent),
+    radial-gradient(1px 1px at 60px 210px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1px 1px at 260px 20px, rgba(255, 255, 255, 0.7), transparent);
+  background-size: 300px 240px;
+  animation: loader-drift 40s linear infinite;
+  opacity: 0.5;
+}
+.loader-stars::after {
+  content: '';
+  background-size: 180px 150px;
+  animation-name: loader-drift-near;
+  animation-duration: 22s;
+  opacity: 0.6;
+}
+/* desloca exatamente uma altura do padrão: o loop não "pula" */
+@keyframes loader-drift { to { background-position-y: 240px; } }
+@keyframes loader-drift-near { to { background-position-y: 150px; } }
 
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  border-top-color: #fff;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
+.loader-content {
+  position: relative;
+  width: min(360px, 100% - 48px);
+  text-align: left;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.loader-kicker {
+  margin: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #00aaff;
+}
+
+.loader-pct {
+  margin: 6px 0 14px;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(4.5rem, 16vw, 7rem);
+  line-height: 0.9;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.loader-pct span { font-size: 0.4em; margin-left: 0.1em; color: rgba(255, 255, 255, 0.5); }
+
+.loader-bar {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.loader-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #00aaff, #00ffaa);
+  box-shadow: 0 0 12px #00aaff;
+  transform-origin: left;
+}
+
+.loader-steps {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+.loader-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  transition: color 0.4s;
+}
+.loader-steps li::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transition: background 0.4s, box-shadow 0.4s;
+}
+.loader-steps li.is-now { color: #fff; }
+.loader-steps li.is-now::before { border-color: #00aaff; animation: step-pulse 1s ease-in-out infinite; }
+.loader-steps li.is-done { color: rgba(255, 255, 255, 0.6); }
+.loader-steps li.is-done::before { background: #00ffaa; border-color: #00ffaa; box-shadow: 0 0 8px #00ffaa; }
+@keyframes step-pulse { 50% { background: #00aaff; box-shadow: 0 0 10px #00aaff; } }
+
+.loader-tip {
+  margin: 26px 0 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.55);
+  animation: tip-in 0.6s ease;
+}
+@keyframes tip-in { from { opacity: 0; transform: translateY(4px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-stars,
+  .loader-stars::after,
+  .loader-steps li.is-now::before { animation: none; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } } /* usado pelo carregando dos sites embutidos */
 
 /* ─── START SCREEN ───────────────────────────────────────── */
 .start-screen.is-visible { transition-delay: 0.4s; } /* espera o loader sumir */
@@ -197,7 +293,10 @@ body {
 }
 
 /* ─── SEÇÕES DE CONTEÚDO (aparecem durante o voo) ────────── */
+/* Sem caixa: o texto fica direto sobre a cena, como legenda de filme / HUD do capacete.
+   A leitura vem de um escurecimento suave na lateral, tingido pela cor do mundo. */
 .secao-ui {
+  --accent: #00aaff;
   position: fixed;
   top: 0;
   right: 0;
@@ -207,68 +306,90 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 6vw;
+  padding: 0 7vw;
   pointer-events: none;
   opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.35s ease;
+}
+
+.secao-ui::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 55% 70% at 100% 50%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    linear-gradient(to left, rgba(2, 2, 8, 0.82) 0%, rgba(2, 2, 8, 0.55) 28%, rgba(2, 2, 8, 0) 55%);
 }
 
 .secao-ui.is-visible {
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.7s ease 0.25s, transform 0.7s ease 0.25s;
+  transition: opacity 0.8s ease 0.2s;
 }
 
 .secao-card {
-  max-width: 400px;
+  max-width: 440px;
   width: 100%;
-  background: rgba(2, 2, 10, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  padding: 36px;
-  border-radius: 2px;
   position: relative;
-  overflow: hidden;
+  padding-left: 22px;
   pointer-events: none;
 }
 
-.secao-ui.is-visible .secao-card { pointer-events: auto; }
-
+/* fio vertical de luz: a única "moldura", ancora o texto sem fechar uma caixa */
 .secao-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #00aaff, #00ffaa);
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--accent) 18%, color-mix(in srgb, var(--accent) 30%, transparent) 70%, transparent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s;
 }
+.secao-ui.is-visible .secao-card::before { transform: scaleY(1); }
 
-.secao-tag {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  color: #00aaff;
-  margin-bottom: 16px;
-  font-family: 'Orbitron', sans-serif;
+.secao-ui.is-visible .secao-card { pointer-events: auto; }
+
+.hud-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 14px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
 }
+.hud-label__where {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.hud-label__where b { font-weight: 500; color: #fff; }
 
 .secao-card h2 {
-  font-family: 'Orbitron', sans-serif;
-  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-  font-weight: 700;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(2.1rem, 3.6vw, 3.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
   color: #fff;
-  margin-bottom: 16px;
-  line-height: 1.25;
-  letter-spacing: 0.04em;
+  margin: 0 0 18px;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
+  text-wrap: balance;
 }
 
 .secao-card p {
-  font-size: 14px;
-  line-height: 1.75;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 12px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0 0 12px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7);
+  text-wrap: pretty;
 }
 
 /* Projetos */
@@ -294,17 +415,17 @@ body {
 .projeto-item p { font-size: 11px; color: rgba(255, 255, 255, 0.35); margin: 0; }
 
 /* Contato */
-.contato-links { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.contato-links { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 
 .contato-link {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 13px;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  padding-bottom: 10px;
-  transition: color 0.2s;
-  display: block;
+  padding: 4px 0;
+  background: linear-gradient(var(--accent, #00aaff), var(--accent, #00aaff)) 0 100% / 0 1px no-repeat;
+  transition: color 0.2s, background-size 0.3s ease;
 }
+.contato-link.is-external::after { content: ' ↗'; color: var(--accent, #00aaff); }
 
-.contato-link:hover { color: #00aaff; }
+.contato-link:hover { color: #fff; background-size: 100% 1px; }
