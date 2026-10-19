@@ -13,17 +13,38 @@ export class AudioEngine {
   private muted = false;
   private world = -1;
 
+  /** Chamar DENTRO de um gesto (clique/toque): é a única hora em que o celular deixa o áudio começar. */
   start(): void {
     if (!this.ctx) {
       const AC =
         window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
+      // iPhone: por padrão o Web Audio obedece à chave de silencioso. 'playback' (Safari 17+) toca como mídia.
+      const nav = navigator as Navigator & { audioSession?: { type: string } };
+      if (nav.audioSession) nav.audioSession.type = 'playback';
+
       this.ctx = new AC();
       this.master = this.ctx.createGain();
       this.master.gain.value = this.muted ? 0 : 0.55;
       this.master.connect(this.ctx.destination);
       this.noise = this.makeNoise(this.ctx);
       this.setWorld(this.world);
+
+      // iOS antigo / alguns Android: tocar um buffer vazio dentro do gesto "destrava" o contexto
+      const unlock = this.ctx.createBufferSource();
+      unlock.buffer = this.ctx.createBuffer(1, 1, 22050);
+      unlock.connect(this.ctx.destination);
+      unlock.start(0);
+
+      // o celular suspende o áudio (notificação, troca de app, tela bloqueada): religa no próximo toque
+      const wake = () => {
+        if (this.ctx && this.ctx.state !== 'running') void this.ctx.resume();
+      };
+      window.addEventListener('touchend', wake, { passive: true });
+      window.addEventListener('click', wake);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) wake();
+      });
     }
     void this.ctx.resume();
   }

@@ -104,6 +104,8 @@ export class PortfolioScene {
   private lastWheelDir = 0;
   private gestureUsed = false;
   private touchStartY: number | null = null;
+  /** o toque começou num texto rolável: ele estava no topo / no fim? (null = não era texto rolável) */
+  private touchCardEdge: { top: boolean; bottom: boolean } | null = null;
   private savedStyles: { html: string; body: string; htmlOv: string; bodyOv: string } | null = null;
 
   // layout responsivo
@@ -562,14 +564,20 @@ export class PortfolioScene {
     this.navigate(dir > 0 ? 1 : -1);
   };
 
+  /**
+   * Deslizar em cima de um texto rolável rola o texto; mas se ele JÁ estava no fim (ou no começo)
+   * quando o dedo encostou, o deslize navega — senão o texto "prende" e não dá para ir ao próximo passo.
+   */
   private onTouchStart = (e: TouchEvent): void => {
-    // deslizar dentro de um card com texto rolável é para rolar o card, não para navegar
-    const card = (e.target as Element | null)?.closest?.('.secao-card') as HTMLElement | null;
-    if (card && card.scrollHeight > card.clientHeight + 1) {
-      this.touchStartY = null;
-      return;
-    }
     this.touchStartY = e.touches[0]?.clientY ?? null;
+    const card = (e.target as Element | null)?.closest?.('.secao-card') as HTMLElement | null;
+    this.touchCardEdge =
+      card && card.scrollHeight > card.clientHeight + 1
+        ? {
+            top: card.scrollTop <= 1,
+            bottom: card.scrollTop + card.clientHeight >= card.scrollHeight - 2,
+          }
+        : null;
   };
 
   private onTouchEnd = (e: TouchEvent): void => {
@@ -577,6 +585,8 @@ export class PortfolioScene {
     const dy = this.touchStartY - (e.changedTouches[0]?.clientY ?? this.touchStartY);
     this.touchStartY = null;
     if (Math.abs(dy) < 40) return; // arrastar para cima (dy > 0) = avançar
+    const edge = this.touchCardEdge;
+    if (edge && !(dy > 0 ? edge.bottom : edge.top)) return; // ainda tinha texto para rolar: foi só rolagem
     this.navigate(dy > 0 ? 1 : -1);
   };
 
